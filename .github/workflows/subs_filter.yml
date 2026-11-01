@@ -1,0 +1,39 @@
+name: Substitutions
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  schedule:
+    # Monday morning, so a new nginx release that breaks the module shows
+    # up here and not in somebody's build
+    - cron: '47 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  subs_filter:
+    name: exercise the substitutions
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The suite in t/ checks the rewrites through Test::Nginx; this fetches a
+    # page end to end with curl and checks the fixed-string, case-insensitive
+    # and regex-capture substitutions, and that a location without the filter
+    # is left untouched.
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup
+        with:
+          test-nginx: 'false'
+
+      - name: Build nginx
+        run: |
+          . .github/versions.env
+          ci/build.sh "$NGINX_VERSION" "$HOME/nginx"
+
+      - name: Drive the substitutions
+        run: ci/subs_filter.sh "$HOME/nginx/sbin/nginx"
